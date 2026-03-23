@@ -1,0 +1,10 @@
+# Local release artifacts
+brand-assets-*.tar.gz
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.vscode/
+.idea/
