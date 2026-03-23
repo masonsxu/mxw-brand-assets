@@ -1,0 +1,92 @@
+name: release-brand-assets
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布的版本标签（例如 v1.2.3）'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: resolve_tag
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="${{ inputs.tag }}"
+          fi
+
+          if [[ -z "${tag}" ]]; then
+            echo "workflow_dispatch 必须提供 tag 输入参数"
+            exit 1
+          fi
+
+          if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag 格式必须为 v*.*.*，当前: ${tag}"
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout tag for packaging
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          git fetch --tags --force
+          git checkout "refs/tags/${{ steps.resolve_tag.outputs.tag }}"
+
+      - name: Validate required files
+        shell: bash
+        run: |
+          required_files=(
+            "public/favicon.svg"
+            "public/logo.svg"
+            "public/logo-circle.svg"
+            "public/logo-options/logo-favicon-16.svg"
+            "public/logo-options/logo-primary-dark.svg"
+            "public/logo-options/logo-primary-light.svg"
+            "public/logo-options/logo-secondary-square.svg"
+            "public/logo-options/logo-mono-black.svg"
+            "public/logo-options/logo-mono-white.svg"
+            "public/logo-options/MXW-BRAND-GUIDELINES.md"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [[ ! -s "${file}" ]]; then
+              echo "缺少关键文件或文件为空: ${file}"
+              exit 1
+            fi
+          done
+
+      - name: Build release archive
+        shell: bash
+        run: |
+          archive="brand-assets-${{ steps.resolve_tag.outputs.tag }}.tar.gz"
+          tar -czf "${archive}" public
+          ls -lh "${archive}"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.resolve_tag.outputs.tag }}
+          name: Brand Assets ${{ steps.resolve_tag.outputs.tag }}
+          files: brand-assets-${{ steps.resolve_tag.outputs.tag }}.tar.gz
+          fail_on_unmatched_files: true
+          generate_release_notes: true
