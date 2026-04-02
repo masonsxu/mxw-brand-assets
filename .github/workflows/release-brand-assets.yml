@@ -57,7 +57,7 @@ jobs:
         run: |
           required_files=(
             "public/favicon.svg"
-            "public/logo.svg"
+            "public/logo-dark.svg"
             "public/logo-light.svg"
             "public/logo-circle.svg"
             "public/logo-options/logo-favicon-16.svg"
